@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
@@ -56,6 +57,7 @@ namespace HtmlToOpenXml
 		private HtmlDocumentStyle htmlStyles;
 		private uint drawingObjId, imageObjId;
 		private Uri baseImageUri;
+		private Dictionary<int, bool> Orientation = new Dictionary<int, bool>();
 
 
 
@@ -119,30 +121,72 @@ namespace HtmlToOpenXml
 			return paragraphs;
 		}
 
-        /// <summary>
+		/// <summary>
 		/// Start the parse processing and append the converted paragraphs into the Body of the document.
 		/// </summary>
-        public void ParseHtml(String html)
-        {
-            // This method exists because we may ensure the SectionProperties remains the last element of the body.
-            // It's mandatory when dealing with page orientation
+		public void ParseHtml(String html) {
+			// This method exists because we may ensure the SectionProperties remains the last element of the body.
+			// It's mandatory when dealing with page orientation
 
-            var paragraphs = Parse(html);
+			var paragraphs = Parse(html);
 
-            Body body = mainPart.Document.Body;
-            SectionProperties sectionProperties = mainPart.Document.Body.GetLastChild<SectionProperties>();
+			Body body = mainPart.Document.Body;
+			SectionProperties initialSectionProperties = mainPart.Document.Body.GetLastChild<SectionProperties>();
+			var firstOrientationChange = Orientation.Keys.FirstOrDefault();
+			var lastOrienationChange = Orientation.Keys.FirstOrDefault();
+			var singleOrientationChange =  Orientation.Keys.Count == 1;
 
-            for (int i = 0; i < paragraphs.Count; i++)
-                body.Append(paragraphs[i]);
-
-            // Push the sectionProperties as the last element of the Body
-            // (required by OpenXml schema to avoid the bad formatting of the document)
-            if (sectionProperties != null)
-            {
-                sectionProperties.Remove();
-                body.Append(sectionProperties);
+			if (Orientation.Keys.Count > 0) {
+                firstOrientationChange = -1;
+                lastOrienationChange = -1;
             }
-        }
+
+			var singleSectionOrientation = initialSectionProperties.CloneNode(true);
+			if (singleOrientationChange) {
+				singleSectionOrientation = Orientation[lastOrienationChange] ? ChangePageOrientation(PageOrientationValues.Landscape)
+																				: ChangePageOrientation(PageOrientationValues.Portrait);
+			}
+			for (int i = 0; i < paragraphs.Count; i++) {
+				var paragraph = paragraphs[i];
+				if (i == firstOrientationChange - 1) {
+					paragraph.PrependChild(new ParagraphProperties(new KeepLines(), initialSectionProperties.CloneNode(true)));
+					body.Append(paragraph);
+					continue;
+				}
+				if (i == lastOrienationChange && !singleOrientationChange) {
+					//paragraph.AppendChild(new ParagraphProperties(new KeepLines(), initialSectionProperties.CloneNode(true)));
+					body.Append(paragraph);
+					continue;
+				}
+
+				if (i >= lastOrienationChange && singleOrientationChange) {
+					paragraph.PrependChild(new ParagraphProperties(new KeepLines(), singleSectionOrientation.CloneNode(true)));
+					body.Append(paragraph);
+					continue;
+				}
+
+				if (!Orientation.TryGetValue(i, out var landscape)) {
+					body.Append(paragraph);
+					continue;
+				}
+				var pProps = paragraph.GetFirstChild<ParagraphProperties>();
+				if (pProps is null) {
+					var orientation = landscape ? PageOrientationValues.Landscape : PageOrientationValues.Portrait;
+					paragraph.PrependChild(new ParagraphProperties(new KeepLines(), ChangePageOrientation(orientation)));
+					body.Append(paragraph);
+					continue;
+				}
+
+			}
+			//Push the sectionProperties as the last element of the Body
+			//(required by OpenXml schema to avoid the bad formatting of the document)
+			//if (singleSectionOrientation != null) {
+			//    var lastParagraph=body.GetLastChild<Paragraph>();
+			//    lastParagraph.Remove();
+			//    lastParagraph.PrependChild(new ParagraphProperties(singleSectionOrientation.CloneNode(true)));
+			//    body.Append(lastParagraph);
+			//}
+		}
 
 		#region RemoveEmptyParagraphs
 
@@ -727,48 +771,52 @@ namespace HtmlToOpenXml
 		/// number of tags (&lt;p&gt;, &lt;pre&gt;, &lt;div&gt;, &lt;span&gt; and &lt;body&gt;).
 		/// </summary>
 		/// <returns>Returns true if the processing of this tag should generate a new paragraph.</returns>
-		private bool ProcessContainerAttributes(HtmlEnumerator en, IList<OpenXmlElement> styleAttributes)
-		{
-			bool newParagraph = false;
+		private bool ProcessContainerAttributes(HtmlEnumerator en, IList<OpenXmlElement> styleAttributes) {
+            bool newParagraph = false;
 
-			// Not applicable to a table : page break
-			if (!tables.HasContext || en.CurrentTag == "<pre>")
-			{
-				String attrValue = en.StyleAttributes["page-break-after"];
-				if (attrValue == "always")
-				{
-					paragraphs.Add(new Paragraph(
-						new Run(
-							new Break() { Type = BreakValues.Page })));
-				}
+            // Not applicable to a table : page break
+            if (!tables.HasContext || en.CurrentTag == "<pre>") {
+                String attrValue = en.StyleAttributes["page-break-after"];
+                if (attrValue == "always") {
+                    paragraphs.Add(new Paragraph(
+                        new Run(
+                            new Break() { Type = BreakValues.Page })));
+                }
 
-				attrValue = en.StyleAttributes["page-break-before"];
-				if (attrValue == "always")
-				{
-					elements.Add(
-						new Run(
-							new Break() { Type = BreakValues.Page })
-					);
-					elements.Add(new Run(
-							new LastRenderedPageBreak())
-					);
-				}
-			}
+                attrValue = en.StyleAttributes["page-break-before"];
+                if (attrValue == "always") {
+                    elements.Add(
+                        new Run(
+                            new Break() { Type = BreakValues.Page })
+                    );
+                    elements.Add(new Run(
+                            new LastRenderedPageBreak())
+                    );
+                }
+
+                var portrait = en.StyleAttributes["section-orientation-after"] == "portrait";
+                if (portrait == true)
+                    Orientation[paragraphs.Count] = false;
+
+                var landscape = en.StyleAttributes["section-orientation-after"] == "landscape";
+                if (landscape == true)
+                    Orientation[paragraphs.Count] = true;
+            }
 
             // support left and right padding
             var padding = en.StyleAttributes.GetAsMargin("padding");
-            if (!padding.IsEmpty && (padding.Left.IsFixed || padding.Right.IsFixed))
-			{
+            if (!padding.IsEmpty && (padding.Left.IsFixed || padding.Right.IsFixed)) {
                 Indentation indentation = new Indentation();
                 if (padding.Left.Value > 0) indentation.Left = padding.Left.ValueInDxa.ToString(CultureInfo.InvariantCulture);
                 if (padding.Right.Value > 0) indentation.Right = padding.Right.ValueInDxa.ToString(CultureInfo.InvariantCulture);
 
-			    currentParagraph.InsertInProperties(prop => prop.Indentation = indentation);
-			}
+                currentParagraph.InsertInProperties(prop => prop.Indentation = indentation);
+            }
 
-			newParagraph |= htmlStyles.Paragraph.ProcessCommonAttributes(en, styleAttributes);
-			return newParagraph;
-		}
+            newParagraph |= htmlStyles.Paragraph.ProcessCommonAttributes(en, styleAttributes);
+            return newParagraph;
+}
+        
 
 		#endregion
 

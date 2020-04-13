@@ -84,7 +84,7 @@ namespace Demo
                 Console.WriteLine();
             }
 
-            Console.ReadLine();
+           // Console.ReadLine();
         }
     }
 }
