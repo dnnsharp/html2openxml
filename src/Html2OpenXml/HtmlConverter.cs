@@ -121,80 +121,80 @@ namespace HtmlToOpenXml
 			return paragraphs;
 		}
 
-		/// <summary>
-		/// Start the parse processing and append the converted paragraphs into the Body of the document.
-		/// </summary>
-		public void ParseHtml(String html) {
-			// This method exists because we may ensure the SectionProperties remains the last element of the body.
-			// It's mandatory when dealing with page orientation
+        /// <summary>
+        /// Start the parse processing and append the converted paragraphs into the Body of the document.
+        /// </summary>
+        public void ParseHtml(String html) {
+            // This method exists because we may ensure the SectionProperties remains the last element of the body.
+            // It's mandatory when dealing with page orientation
 
-			var paragraphs = Parse(html);
+            var paragraphs = Parse(html);
 
-			Body body = mainPart.Document.Body;
-			SectionProperties initialSectionProperties = mainPart.Document.Body.GetLastChild<SectionProperties>();
-			var firstOrientationChange = Orientation.Keys.FirstOrDefault();
-			var lastOrienationChange = Orientation.Keys.FirstOrDefault();
-			var singleOrientationChange =  Orientation.Keys.Count == 1;
+            Body body = mainPart.Document.Body;
+            SectionProperties initialSectionProperties = mainPart.Document.Body.GetLastChild<SectionProperties>();
+            var firstOrientationChange = Orientation.Keys.FirstOrDefault();
+            var lastOrienationChange = Orientation.Keys.LastOrDefault();
+            var singleOrientationChange = Orientation.Keys.Count == 1;
 
-			if (Orientation.Keys.Count > 0) {
+            if (Orientation.Keys.Count == 0) {
                 firstOrientationChange = -1;
                 lastOrienationChange = -1;
             }
 
-			var singleSectionOrientation = initialSectionProperties.CloneNode(true);
-			if (singleOrientationChange) {
-				singleSectionOrientation = Orientation[lastOrienationChange] ? ChangePageOrientation(PageOrientationValues.Landscape)
-																				: ChangePageOrientation(PageOrientationValues.Portrait);
-			}
-			for (int i = 0; i < paragraphs.Count; i++) {
-				var paragraph = paragraphs[i];
-				if (i == firstOrientationChange - 1) {
-					paragraph.PrependChild(new ParagraphProperties(new KeepLines(), initialSectionProperties.CloneNode(true)));
-					body.Append(paragraph);
-					continue;
-				}
-				if (i == lastOrienationChange && !singleOrientationChange) {
-					//paragraph.AppendChild(new ParagraphProperties(new KeepLines(), initialSectionProperties.CloneNode(true)));
-					body.Append(paragraph);
-					continue;
-				}
+            var singleSectionOrientation = initialSectionProperties.CloneNode(true);
+            if (singleOrientationChange) {
+                singleSectionOrientation = Orientation[lastOrienationChange] ? ChangePageOrientation(PageOrientationValues.Landscape)
+                                                                                : ChangePageOrientation(PageOrientationValues.Portrait);
+            }
+            for (int i = 0; i < paragraphs.Count; i++) {
+                var paragraph = paragraphs[i];
+                if (i == firstOrientationChange - 1) {
+                    paragraph.PrependChild(new ParagraphProperties(new KeepLines(), initialSectionProperties.CloneNode(true)));
+                    body.Append(paragraph);
+                    continue;
+                }
+                if (i == lastOrienationChange && !singleOrientationChange) {
+                    //paragraph.AppendChild(new ParagraphProperties(new KeepLines(), initialSectionProperties.CloneNode(true)));
+                    body.Append(paragraph);
+                    continue;
+                }
 
-				if (i >= lastOrienationChange && singleOrientationChange) {
-					paragraph.PrependChild(new ParagraphProperties(new KeepLines(), singleSectionOrientation.CloneNode(true)));
-					body.Append(paragraph);
-					continue;
-				}
+                if (i >= lastOrienationChange && singleOrientationChange) {
+                    paragraph.PrependChild(new ParagraphProperties(new KeepLines(), singleSectionOrientation.CloneNode(true)));
+                    body.Append(paragraph);
+                    continue;
+                }
 
-				if (!Orientation.TryGetValue(i, out var landscape)) {
-					body.Append(paragraph);
-					continue;
-				}
-				var pProps = paragraph.GetFirstChild<ParagraphProperties>();
-				if (pProps is null) {
-					var orientation = landscape ? PageOrientationValues.Landscape : PageOrientationValues.Portrait;
-					paragraph.PrependChild(new ParagraphProperties(new KeepLines(), ChangePageOrientation(orientation)));
-					body.Append(paragraph);
-					continue;
-				}
+                if (!Orientation.TryGetValue(i, out var landscape)) {
+                    body.Append(paragraph);
+                    continue;
+                }
+                var pProps = paragraph.GetFirstChild<ParagraphProperties>();
+                if (pProps is null) {
+                    var orientation = landscape ? PageOrientationValues.Landscape : PageOrientationValues.Portrait;
+                    paragraph.PrependChild(new ParagraphProperties(new KeepLines(), ChangePageOrientation(orientation)));
+                    body.Append(paragraph);
+                    continue;
+                }
 
-			}
-			//Push the sectionProperties as the last element of the Body
-			//(required by OpenXml schema to avoid the bad formatting of the document)
-			//if (singleSectionOrientation != null) {
-			//    var lastParagraph=body.GetLastChild<Paragraph>();
-			//    lastParagraph.Remove();
-			//    lastParagraph.PrependChild(new ParagraphProperties(singleSectionOrientation.CloneNode(true)));
-			//    body.Append(lastParagraph);
-			//}
-		}
+            }
+            //Push the sectionProperties as the last element of the Body
+            //(required by OpenXml schema to avoid the bad formatting of the document)
+            //if (singleSectionOrientation != null) {
+            //    var lastParagraph=body.GetLastChild<Paragraph>();
+            //    lastParagraph.Remove();
+            //    lastParagraph.PrependChild(new ParagraphProperties(singleSectionOrientation.CloneNode(true)));
+            //    body.Append(lastParagraph);
+            //}
+        }
 
-		#region RemoveEmptyParagraphs
+        #region RemoveEmptyParagraphs
 
-		/// <summary>
-		/// Remove empty paragraph unless 2 tables are side by side.
-		/// These paragraph could be empty due to misformed html or spaces in the html source.
-		/// </summary>
-		private void RemoveEmptyParagraphs()
+        /// <summary>
+        /// Remove empty paragraph unless 2 tables are side by side.
+        /// These paragraph could be empty due to misformed html or spaces in the html source.
+        /// </summary>
+        private void RemoveEmptyParagraphs()
 		{
 			bool hasRuns;
 
@@ -762,16 +762,16 @@ namespace HtmlToOpenXml
 			htmlStyles.PrepareStyles(mainPart);
 		}
 
-		#endregion
+        #endregion
 
-		#region ProcessContainerAttributes
+        #region ProcessContainerAttributes
 
-		/// <summary>
-		/// There is a few attributes shared by a large number of tags. This method will check them for a limited
-		/// number of tags (&lt;p&gt;, &lt;pre&gt;, &lt;div&gt;, &lt;span&gt; and &lt;body&gt;).
-		/// </summary>
-		/// <returns>Returns true if the processing of this tag should generate a new paragraph.</returns>
-		private bool ProcessContainerAttributes(HtmlEnumerator en, IList<OpenXmlElement> styleAttributes) {
+        /// <summary>
+        /// There is a few attributes shared by a large number of tags. This method will check them for a limited
+        /// number of tags (&lt;p&gt;, &lt;pre&gt;, &lt;div&gt;, &lt;span&gt; and &lt;body&gt;).
+        /// </summary>
+        /// <returns>Returns true if the processing of this tag should generate a new paragraph.</returns>
+        private bool ProcessContainerAttributes(HtmlEnumerator en, IList<OpenXmlElement> styleAttributes) {
             bool newParagraph = false;
 
             // Not applicable to a table : page break
@@ -815,17 +815,17 @@ namespace HtmlToOpenXml
 
             newParagraph |= htmlStyles.Paragraph.ProcessCommonAttributes(en, styleAttributes);
             return newParagraph;
-}
-        
+        }
 
-		#endregion
 
-		#region ChangePageOrientation
+        #endregion
 
-		/// <summary>
-		/// Generate the required OpenXml element for handling page orientation.
-		/// </summary>
-		private static SectionProperties ChangePageOrientation(PageOrientationValues orientation)
+        #region ChangePageOrientation
+
+        /// <summary>
+        /// Generate the required OpenXml element for handling page orientation.
+        /// </summary>
+        private static SectionProperties ChangePageOrientation(PageOrientationValues orientation)
 		{
 			PageSize pageSize = new PageSize() { Width = (UInt32Value) 16838U, Height = (UInt32Value) 11906U };
 			if (orientation == PageOrientationValues.Portrait)
