@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
@@ -57,7 +58,7 @@ namespace HtmlToOpenXml
 		private uint drawingObjId, imageObjId;
 		private Uri baseImageUri;
 
-
+		private PageOrientationValues currentOrientation = PageOrientationValues.Portrait;
 
 		/// <summary>
 		/// Constructor.
@@ -130,18 +131,16 @@ namespace HtmlToOpenXml
             var paragraphs = Parse(html);
 
             Body body = mainPart.Document.Body;
-            SectionProperties sectionProperties = mainPart.Document.Body.GetLastChild<SectionProperties>();
+			SectionProperties sectionProperties = body.GetLastChild<SectionProperties>();
+			sectionProperties?.Remove();
 
-            for (int i = 0; i < paragraphs.Count; i++)
+			for (int i = 0; i < paragraphs.Count; i++)
                 body.Append(paragraphs[i]);
 
-            // Push the sectionProperties as the last element of the Body
-            // (required by OpenXml schema to avoid the bad formatting of the document)
-            if (sectionProperties != null)
-            {
-                sectionProperties.Remove();
-                body.Append(sectionProperties);
-            }
+			// Push the sectionProperties as the last element of the Body
+			// (required by OpenXml schema to avoid the bad formatting of the document)
+			body.Append(HtmlConverter.ChangePageOrientation(currentOrientation));
+			
         }
 
 		#region RemoveEmptyParagraphs
@@ -768,6 +767,73 @@ namespace HtmlToOpenXml
 
 			newParagraph |= htmlStyles.Paragraph.ProcessCommonAttributes(en, styleAttributes);
 			return newParagraph;
+		}
+
+        #endregion
+
+        #region ProcessSectionOrientation
+
+		private void ProcessSectionOrientation(HtmlEnumerator en)
+		{
+			var sectionOrientationAttr = en.Attributes["section-orientation"];
+			if (string.IsNullOrWhiteSpace(sectionOrientationAttr))
+				return;
+
+			string orientationStr, affectedParagraph;
+			var parts = sectionOrientationAttr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			if(parts.Length == 1)
+			{
+				affectedParagraph = "current";
+				orientationStr = parts[0].Trim().ToLowerInvariant();
+			}
+			else
+			{
+				affectedParagraph = parts[0].Trim().ToLowerInvariant();
+				orientationStr = parts[1].Trim().ToLowerInvariant();
+			}
+
+			PageOrientationValues orientation;
+			if (orientationStr == "landscape")
+				orientation = PageOrientationValues.Landscape;
+			else if(orientationStr == "portrait")
+				orientation = PageOrientationValues.Portrait;
+			else
+				throw new Exception($"Unsupported section orientation value. Received: '{orientationStr}'. Accepted values: landscape or portrait.");
+
+			// Create the current section orientation object.
+			var pageOrientation = ChangePageOrientation(currentOrientation);
+			// Set the new current orientation for the paragraphs that follow.
+			currentOrientation = orientation;
+			
+			if (affectedParagraph == "current") 
+			{
+				// Apply the orientation to the previous paragraph to complete the section orientation and allow the new orientation to take effect from the current paragraph (inclusive).
+				var prevPara = paragraphs.LastOrDefault(el => el is Paragraph && el != currentParagraph) as Paragraph;
+				// this is the first paragraph in the document so we don't have a previous paragraph to set orientation to.
+				if (prevPara != null)
+					ApplySectionOrientation(prevPara, pageOrientation);
+			}
+			else if (affectedParagraph == "after")
+				// Apply the orientation to the current paragraph to complete the section orientation and allow the new orientation to take effect from the next paragraph.
+				ApplySectionOrientation(currentParagraph, pageOrientation);
+			else
+				throw new Exception($"Unsupported section orientation value. Received: '{affectedParagraph}'. Accepted values: current or after.");
+
+		}
+
+		private void ApplySectionOrientation(Paragraph p, SectionProperties pageOrientation) {
+			p.InsertInProperties(props => {
+				var sectionProperties = props.SectionProperties;
+				if (sectionProperties == null)
+					sectionProperties = props.SectionProperties = pageOrientation;
+				else
+				{
+					var pageSize = sectionProperties.GetFirstChild<PageSize>();
+					if (pageSize != null)
+						pageSize.Remove();
+					sectionProperties.PrependChild(pageOrientation.GetFirstChild<PageSize>().CloneNode(true));
+				}
+			});
 		}
 
 		#endregion

@@ -29,13 +29,13 @@ namespace HtmlToOpenXml
 		// RegexOptions.Singleline stands for dealing with attributes that contain newline (typically for base64 image, see issue #8)
 		private static Regex stripAttributesRegex = new Regex(@"
 #tag and its value surrounded by "" or '
-((?<tag>\w+)=(?<sep>""|')\s*(?<val>\#?.*?)(\k<sep>|>))
+((?<tag>(\w-?)+)=(?<sep>""|')\s*(?<val>\#?.*?)(\k<sep>|>))
 |
 # tag whereas the value is not delimited: cellspacing=0
-(?<tag>\w+)=(?<val>\w+)
+(?<tag>(\w-?)+)=(?<val>\w+)
 |
 # single tag (with no value): contenteditable
-\b(?<tag>\w+)\b", RegexOptions.IgnorePatternWhitespace| RegexOptions.Singleline);
+\b(?<tag>(\w-?)+)\b", RegexOptions.IgnorePatternWhitespace| RegexOptions.Singleline);
 
         private static Regex stripStyleAttributesRegex = new Regex(@"(?<name>.+?):\s*(?<val>[^;]+);*\s*");
 
