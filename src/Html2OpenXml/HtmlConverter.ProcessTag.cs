@@ -127,23 +127,7 @@ namespace HtmlToOpenXml
 			string attr = en.StyleAttributes["page-orientation"];
 			if (attr != null)
 			{
-				PageOrientationValues orientation = Converter.ToPageOrientation(attr);
-
-                SectionProperties sectionProperties = mainPart.Document.Body.GetFirstChild<SectionProperties>();
-                if (sectionProperties == null || sectionProperties.GetFirstChild<PageSize>() == null)
-                {
-                    mainPart.Document.Body.Append(HtmlConverter.ChangePageOrientation(orientation));
-                }
-                else
-                {
-                    PageSize pageSize = sectionProperties.GetFirstChild<PageSize>();
-                    if (!pageSize.Compare(orientation))
-                    {
-                        SectionProperties validSectionProp = ChangePageOrientation(orientation);
-                        if (pageSize != null) pageSize.Remove();
-                        sectionProperties.PrependChild(validSectionProp.GetFirstChild<PageSize>().CloneNode(true));
-                    }
-                }
+				currentOrientation = Converter.ToPageOrientation(attr);
             }
 		}
 
@@ -203,7 +187,7 @@ namespace HtmlToOpenXml
 		{
 			// The way the browser consider <div> is like a simple Break. But in case of any attributes that targets
 			// the paragraph, we don't want to apply the style on the old paragraph but on a new one.
-			if (en.Attributes.Count == 0 || (en.StyleAttributes["text-align"] == null && en.Attributes["align"] == null && en.StyleAttributes.GetAsBorder("border").IsEmpty))
+			if (en.Attributes.Count == 0 || (en.StyleAttributes["text-align"] == null && en.Attributes["align"] == null && en.StyleAttributes.GetAsBorder("border").IsEmpty && en.Attributes["section-orientation"] == null))
 			{
 				List<OpenXmlElement> runStyleAttributes = new List<OpenXmlElement>();
 				bool newParagraph = ProcessContainerAttributes(en, runStyleAttributes);
@@ -621,6 +605,7 @@ namespace HtmlToOpenXml
 
 			List<OpenXmlElement> styleAttributes = new List<OpenXmlElement>();
 			bool newParagraph = ProcessContainerAttributes(en, styleAttributes);
+			ProcessSectionOrientation(en);
 
 			if (styleAttributes.Count > 0)
 				htmlStyles.Runs.BeginTag(en.CurrentTag, styleAttributes.ToArray());

@@ -1,0 +1,52 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+    <title></title>
+</head>
+<body>
+    <p section-orientation="current landscape">this should be the first line in the landscape orientation.</p>
+    <p section-orientation="current portrait">this should be the first line in the portrait orientation.</p>
+
+    <p>
+        An ordered list:
+        <ol>
+            <li>Coffee</li>
+            <li>Tea</li>
+            <li>
+                Milk
+                <ul>
+                    <li>Coffee</li>
+                    <li>
+                        Tea
+                        <ol>
+                            <li>Earl Grey</li>
+                            <li>Green</li>
+                            <li>Rosboh</li>
+                        </ol>
+                    </li>
+                    <li>Milk</li>
+                </ul>
+            </li>
+            <li>Wine</li>
+        </ol>
+    </p>
+
+    <p section-orientation="current landscape">this should be the first line in the landscape orientation.</p>
+
+    <p section-orientation="after portrait">
+        This should be the last line in the previous orientation (landscape).
+    </p>
+
+    <div>
+        This should be the first line in the portrait orientation.
+        <span style="font-style: oblique">écrit en oblique.</span>
+    </div>
+    <div section-orientation="landscape" style="font-size:20">
+        This should be the first line in the landscape orientation.
+        'current' should be the default and optional.
+    </div>
+    <!--<div style="page-break-before: always">
+    New page
+    </div>-->
+</body>
+</html>
