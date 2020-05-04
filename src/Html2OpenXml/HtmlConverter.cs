@@ -120,36 +120,75 @@ namespace HtmlToOpenXml
 			return paragraphs;
 		}
 
-        /// <summary>
+		/// <summary>
 		/// Start the parse processing and append the converted paragraphs into the Body of the document.
 		/// </summary>
-        public void ParseHtml(String html)
-        {
-            // This method exists because we may ensure the SectionProperties remains the last element of the body.
-            // It's mandatory when dealing with page orientation
+		public void ParseHtml(String html) {
+			// This method exists because we may ensure the SectionProperties remains the last element of the body.
+			// It's mandatory when dealing with page orientation
 
-            var paragraphs = Parse(html);
+			var paragraphs = Parse(html);
 
-            Body body = mainPart.Document.Body;
-			SectionProperties sectionProperties = body.GetLastChild<SectionProperties>();
-			sectionProperties?.Remove();
+			Body body = mainPart.Document.Body;
+			SectionProperties bodySectionProperties = body.GetLastChild<SectionProperties>();
+			bodySectionProperties?.Remove();
+			var firstparaSectionProps = body.Descendants<SectionProperties>().FirstOrDefault();
+			var lastSectionIsPaginated = false;
+			PageNumberType pageNumType = null;
+			FooterReference footerRef = null;
+			//if we find a pageNumType and the last section is paginated the most likely we need to pass it on to the first added para.
+			if (!(bodySectionProperties is null)) {
+				pageNumType = bodySectionProperties.GetFirstChild<PageNumberType>();
+				pageNumType?.Remove();
+				footerRef = bodySectionProperties.GetFirstChild<FooterReference>();
+			}
+
+			if (firstparaSectionProps != null && bodySectionProperties.GetFirstChild<FooterReference>() != null)
+				lastSectionIsPaginated = true;
 
 			for (int i = 0; i < paragraphs.Count; i++)
-                body.Append(paragraphs[i]);
+				body.Append(paragraphs[i]);
 
 			// Push the sectionProperties as the last element of the Body
 			// (required by OpenXml schema to avoid the bad formatting of the document)
-			body.Append(HtmlConverter.ChangePageOrientation(currentOrientation));
-			
+			var newOrientationSettings = HtmlConverter.ChangePageOrientation(currentOrientation);
+			if (bodySectionProperties is null) {
+				body.Append(newOrientationSettings);
+				bodySectionProperties = newOrientationSettings;
+            } else {
+                var firstAddedParaSectProps = paragraphs.First().Descendants<SectionProperties>().First();
+                if (firstparaSectionProps is null)
+                    if (!(footerRef is null))
+                        firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
+
+                    else {
+                        if (lastSectionIsPaginated)
+                            firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
+
+                        var pageMargins = firstAddedParaSectProps.GetFirstChild<PageMargin>();
+                        if (!(pageNumType is null))
+                            firstAddedParaSectProps.InsertAfter(pageNumType.CloneNode(true), pageMargins);
+                    }
+
+                var pageSize = bodySectionProperties.GetFirstChild<PageSize>();
+                var newPageSize = newOrientationSettings.GetFirstChild<PageSize>();
+
+                if (pageSize is null)
+                    bodySectionProperties.PrependChild(newPageSize.CloneNode(true));
+                else
+                    bodySectionProperties.ReplaceChild(newPageSize.CloneNode(true), pageSize);
+
+                body.Append(bodySectionProperties);
+            }
         }
 
-		#region RemoveEmptyParagraphs
+        #region RemoveEmptyParagraphs
 
-		/// <summary>
-		/// Remove empty paragraph unless 2 tables are side by side.
-		/// These paragraph could be empty due to misformed html or spaces in the html source.
-		/// </summary>
-		private void RemoveEmptyParagraphs()
+        /// <summary>
+        /// Remove empty paragraph unless 2 tables are side by side.
+        /// These paragraph could be empty due to misformed html or spaces in the html source.
+        /// </summary>
+        private void RemoveEmptyParagraphs()
 		{
 			bool hasRuns;
 
