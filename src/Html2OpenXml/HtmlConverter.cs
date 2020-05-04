@@ -155,48 +155,48 @@ namespace HtmlToOpenXml
 			if (bodySectionProperties is null) {
 				body.Append(newOrientationSettings);
 				bodySectionProperties = newOrientationSettings;
-            } else {
-                var firstAddedParaSectProps = paragraphs.First(p => p.Descendants<SectionProperties>().Any()).Descendants<SectionProperties>().FirstOrDefault();
+			} else {
+				var firstAddedParaSectProps = paragraphs.First(p => p.Descendants<SectionProperties>().Any()).Descendants<SectionProperties>().FirstOrDefault();
 				if (firstAddedParaSectProps is null) { 
 					var paragraph = paragraphs.First();
 					var firstParaSection = bodySectionProperties.CloneNode(true);
-                    if (!(footerRef is null))
-                        firstParaSection.RemoveChild(firstParaSection.GetFirstChild<FooterReference>());
-                }
-                if (firstparaSectionProps is null) { 
-                    if (!(footerRef is null))
-                        firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
+					if (!(footerRef is null))
+						firstParaSection.RemoveChild(firstParaSection.GetFirstChild<FooterReference>());
+				}
+				if (firstparaSectionProps is null) { 
+					if (!(footerRef is null))
+						firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
 				} else {
-                        if (lastSectionIsPaginated)
-                            firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
+					if (lastSectionIsPaginated)
+						firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
 
-                        var pageMargins = firstAddedParaSectProps.GetFirstChild<PageMargin>();
-                        if (!(pageNumType is null))
-                            firstAddedParaSectProps.InsertAfter(pageNumType.CloneNode(true), pageMargins);
-                    }
+					var pageMargins = firstAddedParaSectProps.GetFirstChild<PageMargin>();
+					if (!(pageNumType is null))
+						firstAddedParaSectProps.InsertAfter(pageNumType.CloneNode(true), pageMargins);
+				}
 
-                var pageSize = bodySectionProperties.GetFirstChild<PageSize>();
-                var newPageSize = newOrientationSettings.GetFirstChild<PageSize>();
+				var pageSize = bodySectionProperties.GetFirstChild<PageSize>();
+				var newPageSize = newOrientationSettings.GetFirstChild<PageSize>();
 
-                if (pageSize is null)
-                    bodySectionProperties.PrependChild(newPageSize.CloneNode(true));
-                else
-                    bodySectionProperties.ReplaceChild(newPageSize.CloneNode(true), pageSize);
+				if (pageSize is null)
+					bodySectionProperties.PrependChild(newPageSize.CloneNode(true));
+				else
+					bodySectionProperties.ReplaceChild(newPageSize.CloneNode(true), pageSize);
 
-                body.Append(bodySectionProperties);
-            }
-        }
+				body.Append(bodySectionProperties);
+			}
+		}
 
-        #region RemoveEmptyParagraphs
+		#region RemoveEmptyParagraphs
 
-        /// <summary>
-        /// Remove empty paragraph unless 2 tables are side by side.
-        /// These paragraph could be empty due to misformed html or spaces in the html source.
-        /// </summary>
-        private void RemoveEmptyParagraphs() {
-            bool hasRuns;
+		/// <summary>
+		/// Remove empty paragraph unless 2 tables are side by side.
+		/// These paragraph could be empty due to misformed html or spaces in the html source.
+		/// </summary>
+		private void RemoveEmptyParagraphs() {
+			bool hasRuns;
 
-            for (int i = 0; i < paragraphs.Count; i++)
+			for (int i = 0; i < paragraphs.Count; i++)
 			{
 				OpenXmlCompositeElement p = paragraphs[i];
 
