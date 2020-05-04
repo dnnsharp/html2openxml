@@ -156,12 +156,17 @@ namespace HtmlToOpenXml
 				body.Append(newOrientationSettings);
 				bodySectionProperties = newOrientationSettings;
             } else {
-                var firstAddedParaSectProps = paragraphs.First().Descendants<SectionProperties>().First();
-                if (firstparaSectionProps is null)
+                var firstAddedParaSectProps = paragraphs.First(p => p.Descendants<SectionProperties>().Any()).Descendants<SectionProperties>().FirstOrDefault();
+				if (firstAddedParaSectProps is null) { 
+					var paragraph = paragraphs.First();
+					var firstParaSection = bodySectionProperties.CloneNode(true);
+                    if (!(footerRef is null))
+                        firstParaSection.RemoveChild(firstParaSection.GetFirstChild<FooterReference>());
+                }
+                if (firstparaSectionProps is null) { 
                     if (!(footerRef is null))
                         firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
-
-                    else {
+				} else {
                         if (lastSectionIsPaginated)
                             firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
 
@@ -188,11 +193,10 @@ namespace HtmlToOpenXml
         /// Remove empty paragraph unless 2 tables are side by side.
         /// These paragraph could be empty due to misformed html or spaces in the html source.
         /// </summary>
-        private void RemoveEmptyParagraphs()
-		{
-			bool hasRuns;
+        private void RemoveEmptyParagraphs() {
+            bool hasRuns;
 
-			for (int i = 0; i < paragraphs.Count; i++)
+            for (int i = 0; i < paragraphs.Count; i++)
 			{
 				OpenXmlCompositeElement p = paragraphs[i];
 
