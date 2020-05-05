@@ -132,19 +132,23 @@ namespace HtmlToOpenXml
 			Body body = mainPart.Document.Body;
 			SectionProperties bodySectionProperties = body.GetLastChild<SectionProperties>();
 			bodySectionProperties?.Remove();
+
 			var firstparaSectionProps = body.Descendants<SectionProperties>().FirstOrDefault();
 			var lastSectionIsPaginated = false;
+
 			PageNumberType pageNumType = null;
 			FooterReference footerRef = null;
+
+			if (firstparaSectionProps != null && bodySectionProperties.GetFirstChild<FooterReference>() != null)
+				lastSectionIsPaginated = true;
+			
 			//if we find a pageNumType and the last section is paginated the most likely we need to pass it on to the first added para.
 			if (!(bodySectionProperties is null)) {
 				pageNumType = bodySectionProperties.GetFirstChild<PageNumberType>();
 				pageNumType?.Remove();
 				footerRef = bodySectionProperties.GetFirstChild<FooterReference>();
+				footerRef?.Remove();
 			}
-
-			if (firstparaSectionProps != null && bodySectionProperties.GetFirstChild<FooterReference>() != null)
-				lastSectionIsPaginated = true;
 
 			for (int i = 0; i < paragraphs.Count; i++)
 				body.Append(paragraphs[i]);
@@ -157,23 +161,23 @@ namespace HtmlToOpenXml
 				bodySectionProperties = newOrientationSettings;
             } else {
                 var firstAddedParaSectProps = paragraphs.First(p => p.Descendants<SectionProperties>().Any()).Descendants<SectionProperties>().FirstOrDefault();
-				if (firstAddedParaSectProps is null) { 
-					var paragraph = paragraphs.First();
-					var firstParaSection = bodySectionProperties.CloneNode(true);
-                    if (!(footerRef is null))
-                        firstParaSection.RemoveChild(firstParaSection.GetFirstChild<FooterReference>());
+                if (firstAddedParaSectProps is null) {
+                    var paragraph = paragraphs.First();
+                    var firstParaSection = bodySectionProperties.CloneNode(true);
+                    firstAddedParaSectProps.AppendChild(new ParagraphProperties(firstParaSection));
                 }
-                if (firstparaSectionProps is null) { 
+
+                if (firstparaSectionProps is null) {
                     if (!(footerRef is null))
                         firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
-				} else {
-                        if (lastSectionIsPaginated)
-                            firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
+                } else {
+                    if (lastSectionIsPaginated)
+                        firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
 
-                        var pageMargins = firstAddedParaSectProps.GetFirstChild<PageMargin>();
-                        if (!(pageNumType is null))
-                            firstAddedParaSectProps.InsertAfter(pageNumType.CloneNode(true), pageMargins);
-                    }
+                    var pageMargins = firstAddedParaSectProps.GetFirstChild<PageMargin>();
+                    if (!(pageNumType is null))
+                        firstAddedParaSectProps.InsertAfter(pageNumType.CloneNode(true), pageMargins);
+                }
 
                 var pageSize = bodySectionProperties.GetFirstChild<PageSize>();
                 var newPageSize = newOrientationSettings.GetFirstChild<PageSize>();
