@@ -20,4 +20,11 @@
     <EmbeddedResource Include="Resources\*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Remove="Resources\toc-doc-paginated.docx" />
+    <None Remove="Resources\toc-first-sect-paginate-second-unpaginated.docx" />
+    <None Remove="Resources\toc-last-sect-paginated-start1.docx" />
+    <None Remove="Resources\toc-last-sect-paginated-startrandom.docx" />
+  </ItemGroup>
+
 </Project>
