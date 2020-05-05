@@ -163,9 +163,10 @@ namespace HtmlToOpenXml
 				var firstAddedParaSectProps = paragraphs.First(p => p.Descendants<SectionProperties>().Any()).Descendants<SectionProperties>().FirstOrDefault();
                 if (firstAddedParaSectProps is null) {
                     var paragraph = paragraphs.First();
-                    var firstParaSection = bodySectionProperties.CloneNode(true);
-                    firstAddedParaSectProps.AppendChild(new ParagraphProperties(firstParaSection));
-				}
+                    var firstParaSection = bodySectionProperties;
+                    paragraph.AppendChild(new ParagraphProperties(firstParaSection.CloneNode(true)));
+                    firstAddedParaSectProps = paragraph.Descendants<SectionProperties>().First();
+                }
 
                 if (firstparaSectionProps is null) {
 					if (!(footerRef is null))
