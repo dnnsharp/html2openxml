@@ -147,9 +147,11 @@ namespace HtmlToOpenXml
             if (!(bodySectionProperties is null)) {
                 pageNumType = bodySectionProperties.GetFirstChild<PageNumberType>();
                 pageNumType?.Remove();
-                footerRef = bodySectionProperties.GetFirstChild<FooterReference>();
+                
+				footerRef = bodySectionProperties.GetFirstChild<FooterReference>();
                 footerRef?.Remove();
-                headerRef = bodySectionProperties.GetFirstChild<HeaderReference>();
+                
+				headerRef = bodySectionProperties.GetFirstChild<HeaderReference>();
                 headerRef?.Remove();
             }
 
@@ -164,9 +166,11 @@ namespace HtmlToOpenXml
                 bodySectionProperties = newOrientationSettings;
             } else {
                 var firstAddedParaSectProps = paragraphs.First(p => p.Descendants<SectionProperties>().Any()).Descendants<SectionProperties>().FirstOrDefault();
-                if (firstAddedParaSectProps is null) {
+               
+				if (firstAddedParaSectProps is null) {
                     var paragraph = paragraphs.First();
                     var firstParaSection = bodySectionProperties;
+
                     paragraph.AppendChild(new ParagraphProperties(firstParaSection.CloneNode(true)));
                     firstAddedParaSectProps = paragraph.Descendants<SectionProperties>().First();
                 }
@@ -179,9 +183,11 @@ namespace HtmlToOpenXml
                 } else {
                     if (lastSectionIsPaginated) {
                         firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
-                        if (!(headerRef is null))
-                            firstAddedParaSectProps.PrependChild(headerRef.CloneNode(true));
                     }
+
+                    if (!(headerRef is null))
+                        firstAddedParaSectProps.PrependChild(headerRef.CloneNode(true));
+
                     var pageMargins = firstAddedParaSectProps.GetFirstChild<PageMargin>();
                     if (!(pageNumType is null))
                         firstAddedParaSectProps.InsertAfter(pageNumType.CloneNode(true), pageMargins);
