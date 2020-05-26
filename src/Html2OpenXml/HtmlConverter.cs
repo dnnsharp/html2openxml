@@ -138,6 +138,7 @@ namespace HtmlToOpenXml
 
 			PageNumberType pageNumType = null;
 			FooterReference footerRef = null;
+			HeaderReference headerRef = null;
 
 			if (firstparaSectionProps != null && bodySectionProperties.GetFirstChild<FooterReference>() != null)
 				lastSectionIsPaginated = true;
@@ -148,6 +149,8 @@ namespace HtmlToOpenXml
 				pageNumType?.Remove();
 				footerRef = bodySectionProperties.GetFirstChild<FooterReference>();
 				footerRef?.Remove();
+				headerRef = bodySectionProperties.GetFirstChild<HeaderReference>();
+				headerRef?.Remove();
 			}
 
 			for (int i = 0; i < paragraphs.Count; i++)
@@ -171,10 +174,14 @@ namespace HtmlToOpenXml
                 if (firstparaSectionProps is null) {
 					if (!(footerRef is null))
 						firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
-                } else {
-                    if (lastSectionIsPaginated)
+					if (!(headerRef is null))
+						firstAddedParaSectProps.PrependChild(headerRef.CloneNode(true));
+				} else {
+                    if (lastSectionIsPaginated) {
                         firstAddedParaSectProps.PrependChild(footerRef.CloneNode(true));
-
+                        if (!(headerRef is null))
+                            firstAddedParaSectProps.PrependChild(headerRef.CloneNode(true));
+                    }
                     var pageMargins = firstAddedParaSectProps.GetFirstChild<PageMargin>();
                     if (!(pageNumType is null))
                         firstAddedParaSectProps.InsertAfter(pageNumType.CloneNode(true), pageMargins);
